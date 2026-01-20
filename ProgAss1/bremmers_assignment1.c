@@ -20,12 +20,12 @@ int getWholeNumInRange(int min, int max){
 //between min and max
 float getNumInRange(int min, int max){
         float n;
-
-        do{
-                printf("\nEnter a num between %d and %d (inclusive):", min, max);
-                scanf("%f", &n);
-        }while(n < min || n > max);
-
+     
+        printf("\nEnter a num between %d and %d (inclusive):", min, max);
+        scanf("%f", &n);
+	if(n < min || n > max){
+		printf("\nERROR:Number outsitde of range");
+	}
         return n;
 }
 
@@ -33,11 +33,11 @@ float getNumInRange(int min, int max){
 //for a positive real value (Only really used for radius input)
 float getPosValue(void){
 	float n;
-	do{
-		printf("\nEnter a real number >= 0: ");
-		scanf("%f", &n);
-	}while(n < 0);
-
+	printf("\nEnter a real number >= 0: ");
+	scanf("%f", &n);
+	if(n < 0){
+		printf("\nERROR:Value entered is negative");
+	}
 	return n;
 }
 
@@ -66,6 +66,7 @@ float calcVol(float radius, float ha, float hb){
 	return ((M_PI*h*z) /6);				//return volume from h, z, and PI constant
 }
 
+
 /* ===========================================
  *	Scott Bremmer
  *	ID: 934-079-543
@@ -89,29 +90,32 @@ float calcVol(float radius, float ha, float hb){
 int main(void){
 	int sphereSegs = getWholeNumInRange(2, 10); 		//number of sphere segs we are calculating for (i.e. array size)
 	float ha[sphereSegs], hb[sphereSegs];			//larger height and smaller height (ha > hb)
-	float radius;						//radius 
+	float radius[sphereSegs];						//radius 
 	float surfaceArea[sphereSegs], volume[sphereSegs]; 	//SA and Vol for each seg
 	float avgSA = 0;					// average surface area
        	float avgVol = 0;					// average volume
-
-	radius = getPosValue();
 	
 	//CLI input control loop
 	for(int i = 0; i < sphereSegs; i++){
-		printf("\nenter smaller h");
-		hb[i] = getNumInRange(0, radius);
-		printf("\nenter larger h");
-		ha[i] = getNumInRange(hb[i], radius);
-		
-		surfaceArea[i] = calcSurfArea(radius, ha[i], hb[i]);
-		volume[i] = calcVol(radius, ha[i], hb[i]);
+		do{
+			printf("\nEnter Radius:");
+			radius[i] = getPosValue();
+			printf("\nenter larger h:");
+			ha[i] = getNumInRange(0, radius[i]);
+			printf("\nenter smaller h:");
+			hb[i] = getNumInRange(0, ha[i]);
+		}while(radius[i] <= 0 || ((ha[i] <= 0 || ha[i] > radius[i]) || (hb[i] <= 0 || hb[i] > ha[i])));		
+
+		surfaceArea[i] = calcSurfArea(radius[i], ha[i], hb[i]);
+		volume[i] = calcVol(radius[i], ha[i], hb[i]);
 		
 		//add calculated vals to averages
 		avgSA += surfaceArea[i]; 
 		avgVol += volume[i];
 
 		printf("\n=============================");
-		printf("\nRadius: %.2f \n %.2f < height < %.2f", radius, hb[i], ha[i]);
+		printf("\nRadius = %.2f\tha = %.2f\thb = %.2f", radius[i], ha[i], hb[i]);
+		printf("\nTotal Surface Area  = %.2f\tVolume = %.2f", surfaceArea[i], volume[i]);
 		printf("\n=============================");
 	}
 	//calculate averages by dividing sums by number of sphere segments
@@ -119,12 +123,7 @@ int main(void){
 	avgVol /= sphereSegs;
 
 	printf("\n=============================");
-	printf("\n\t\tVolume\tSurface Area");
-	//CLI output control loop
-	for(int i = 0; i < sphereSegs; i++){
-		printf("\nSegment %d:\t| %.3f\t\t| %.3f", i+1, volume[i], surfaceArea[i]);	
-	}
+	printf("\nAverage Surface Area = %.2f\t Average Volume = %.2f", avgSA, avgVol);	
 	printf("\n=============================");
 
-	printf("\nAvg Volume: %.3f\nAvg Surface Area: %.3f", avgVol, avgSA);
 }

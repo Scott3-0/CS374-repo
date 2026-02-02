@@ -1,5 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
+
+struct Movie {
+    char* title;
+    int year;
+    char** langs;
+    float rating;
+};
+
 void readMovieFile(char* filePath){
 	char *currLine = NULL;
 	size_t len = 0;

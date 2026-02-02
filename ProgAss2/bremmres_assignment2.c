@@ -2,16 +2,16 @@
 #include <stdlib.h>
 #include <string.h>
 
-struct Movie {
+struct movie {
     char* title;
     int year;
     char** langs;
     float rating;
-    struct Movie* next;
+    struct movie* next;
 };
 
-struct Movie* create_movie(char* title, int year, char** langs, float rating) {
-    struct Movie* movie = malloc(sizeof(struct Movie));
+struct movie* create_movie(char* title, int year, char** langs, float rating) {
+    struct movie* movie = malloc(sizeof(struct movie));
     movie->title = title;
     movie->year = year;
     movie->langs = langs;
@@ -47,13 +47,13 @@ char** parseLangs(char* langStr, int* langCount) {
     return langs;
 }
 
-struct Movie* readMovieFile(char* filePath) {
+struct movie* readMovieFile(char* filePath) {
     char *currLine = NULL;
     size_t len = 0;
     ssize_t nread;
     FILE *movieFile = fopen(filePath, "r");
-    struct Movie* head = NULL;
-    struct Movie* tail = NULL;
+    struct movie* head = NULL;
+    struct movie* tail = NULL;
     int lineNum = 0;
     int movieCount = 0;
 
@@ -95,7 +95,7 @@ struct Movie* readMovieFile(char* filePath) {
         float rating = atof(token);
 
         // Create movie node and add to list
-        struct Movie* newMovie = create_movie(title, year, langs, rating);
+        struct movie* newMovie = create_movie(title, year, langs, rating);
 
         if (head == NULL) {
             head = newMovie;
@@ -114,19 +114,115 @@ struct Movie* readMovieFile(char* filePath) {
     return head;
 }
 
+void showMoviesByYear(struct movie* list) {
+    int year;
+    printf("Enter the year for which you want to see movies: ");
+    scanf("%d", &year);
+
+    struct movie* curr = list;
+    int found = 0;
+    while (curr != NULL) {
+        if (curr->year == year) {
+            printf("%s\n", curr->title);
+            found = 1;
+        }
+        curr = curr->next;
+    }
+    if (!found) {
+        printf("No data about movies released in the year %d\n", year);
+    }
+}
+
+void showHighestRatedByYear(struct movie* list) {
+    // Find all unique years and track highest rated movie for each
+    // First pass: find min and max years
+    int minYear = 9999, maxYear = 0;
+    struct movie* curr = list;
+    while (curr != NULL) {
+        if (curr->year < minYear) minYear = curr->year;
+        if (curr->year > maxYear) maxYear = curr->year;
+        curr = curr->next;
+    }
+
+    // For each year in range, find highest rated
+    for (int y = minYear; y <= maxYear; y++) {
+        struct movie* best = NULL;
+        curr = list;
+        while (curr != NULL) {
+            if (curr->year == y) {
+                if (best == NULL || curr->rating > best->rating) {
+                    best = curr;
+                }
+            }
+            curr = curr->next;
+        }
+        if (best != NULL) {
+            printf("%d %.1f %s\n", best->year, best->rating, best->title);
+        }
+    }
+}
+
+void showMoviesByLanguage(struct movie* list) {
+    char lang[21];
+    printf("Enter the language for which you want to see movies: ");
+    scanf("%s", lang);
+
+    struct movie* curr = list;
+    int found = 0;
+    while (curr != NULL) {
+        // Check if this movie has the language
+        char** l = curr->langs;
+        while (*l != NULL) {
+            if (strcmp(*l, lang) == 0) {
+                printf("%d %s\n", curr->year, curr->title);
+                found = 1;
+                break;
+            }
+            l++;
+        }
+        curr = curr->next;
+    }
+    if (!found) {
+        printf("No data about movies released in %s\n", lang);
+    }
+}
+
+void printMenu() {
+    printf("\n1. Show movies released in the specified year\n");
+    printf("2. Show highest rated movie for each year\n");
+    printf("3. Show the title and year of release of all movies in a specific language\n");
+    printf("4. Exit from the program\n\n");
+    printf("Enter a choice from 1 to 4: ");
+}
+
 int main(int argc, char **argv){
-	if(argc < 2){
-		printf("PROVIDE VALID FILEPATH\n");
-		return EXIT_FAILURE;
-	}
-	struct Movie* movieList = readMovieFile(argv[1]);
+    if(argc < 2){
+        printf("PROVIDE VALID FILEPATH\n");
+        return EXIT_FAILURE;
+    }
+    struct movie* movieList = readMovieFile(argv[1]);
 
-	// Test: print first few movies to verify
-	struct Movie* curr = movieList;
-	while (curr != NULL) {
-		printf("%s (%d) - Rating: %.1f\n", curr->title, curr->year, curr->rating);
-		curr = curr->next;
-	}
+    int choice;
+    do {
+        printMenu();
+        scanf("%d", &choice);
 
-	return EXIT_SUCCESS;
+        switch(choice) {
+            case 1:
+                showMoviesByYear(movieList);
+                break;
+            case 2:
+                showHighestRatedByYear(movieList);
+                break;
+            case 3:
+                showMoviesByLanguage(movieList);
+                break;
+            case 4:
+                break;
+            default:
+                printf("You entered an incorrect choice. Try again.\n");
+        }
+    } while (choice != 4);
+
+    return EXIT_SUCCESS;
 }

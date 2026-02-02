@@ -6,7 +6,18 @@ struct Movie {
     int year;
     char** langs;
     float rating;
+    struct Movie* next;
 };
+
+struct Movie* create_movie(char* title, int year, char** langs, float rating) {
+    struct Movie* movie = malloc(sizeof(struct Movie));
+    movie->title = title;
+    movie->year = year;
+    movie->langs = langs;
+    movie->rating = rating;
+    movie->next = NULL;
+    return movie;
+}
 
 void readMovieFile(char* filePath){
 	char *currLine = NULL;

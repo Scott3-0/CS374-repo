@@ -1,8 +1,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <dirent.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <time.h>
 
-/* struct for movie information */
+#define PREFIX "movies_"
+#define EXTENSION ".csv"
+#define ONID "chaudhrn"
+
 struct movie {
     char *title;
     int year;
@@ -11,9 +19,7 @@ struct movie {
     struct movie *next;
 };
 
-/* Parse the current line which is comma delimited and create a
- * movie struct with the data in this line
- */
+/* Parse a CSV line into a movie struct */
 struct movie *createMovie(char *currLine) {
     struct movie *currMovie = malloc(sizeof(struct movie));
 
@@ -36,9 +42,7 @@ struct movie *createMovie(char *currLine) {
     return currMovie;
 }
 
-/* Return a linked list of movies by parsing data from each line
- * of the specified file.
- */
+/* Parse a CSV file into a linked list of movies */
 struct movie *processFile(char *filePath) {
     FILE *movieFile = fopen(filePath, "r");
     if (movieFile == NULL) {
@@ -49,7 +53,6 @@ struct movie *processFile(char *filePath) {
     char *currLine = NULL;
     size_t len = 0;
     ssize_t nread;
-    int count = 0;
 
     struct movie *head = NULL;
     struct movie *tail = NULL;
@@ -66,12 +69,10 @@ struct movie *processFile(char *filePath) {
             tail->next = newNode;
             tail = newNode;
         }
-        count++;
     }
 
     free(currLine);
     fclose(movieFile);
-    printf("Processed file %s and parsed data for %d movies\n", filePath, count);
     return head;
 }
 
@@ -87,20 +88,136 @@ void freeMovies(struct movie *list) {
     }
 }
 
-int main(int argc, char *argv[]) {
-    if (argc < 2) {
-        printf("You must provide the name of the file to process\n");
-        printf("Example usage: ./movies movies_sample_1.csv\n");
-        return EXIT_FAILURE;
+/* Find the largest file matching movies_*.csv in the current directory */
+void findLargestFile(char *result) {
+    DIR *d = opendir(".");
+    struct dirent *entry;
+    struct stat fileStat;
+    off_t maxSize = -1;
+    result[0] = '\0';
+
+    while ((entry = readdir(d)) != NULL) {
+        if (strncmp(entry->d_name, PREFIX, strlen(PREFIX)) == 0) {
+            char *ext = strstr(entry->d_name, EXTENSION);
+            if (ext != NULL && strcmp(ext, EXTENSION) == 0) {
+                stat(entry->d_name, &fileStat);
+                if (fileStat.st_size > maxSize) {
+                    maxSize = fileStat.st_size;
+                    strcpy(result, entry->d_name);
+                }
+            }
+        }
+    }
+    closedir(d);
+}
+
+/* Find the smallest file matching movies_*.csv in the current directory */
+void findSmallestFile(char *result) {
+    DIR *d = opendir(".");
+    struct dirent *entry;
+    struct stat fileStat;
+    off_t minSize = -1;
+    result[0] = '\0';
+
+    while ((entry = readdir(d)) != NULL) {
+        if (strncmp(entry->d_name, PREFIX, strlen(PREFIX)) == 0) {
+            char *ext = strstr(entry->d_name, EXTENSION);
+            if (ext != NULL && strcmp(ext, EXTENSION) == 0) {
+                stat(entry->d_name, &fileStat);
+                if (minSize == -1 || fileStat.st_size < minSize) {
+                    minSize = fileStat.st_size;
+                    strcpy(result, entry->d_name);
+                }
+            }
+        }
+    }
+    closedir(d);
+}
+
+/* Create directory and write year files with movie titles */
+void writeFiles(struct movie *list) {
+    /* Generate random directory name */
+    srand(time(NULL));
+    int randNum = rand() % 100000;
+    char dirName[256];
+    sprintf(dirName, "%s.movies.%d", ONID, randNum);
+
+    /* Create directory with rwxr-x--- permissions */
+    mkdir(dirName, 0750);
+    printf("Created directory with name %s\n\n", dirName);
+
+    /* Write movie titles to year files */
+    struct movie *curr = list;
+    while (curr != NULL) {
+        char filePath[512];
+        sprintf(filePath, "%s/%d.txt", dirName, curr->year);
+
+        FILE *fp = fopen(filePath, "a");
+        fprintf(fp, "%s\n", curr->title);
+        fclose(fp);
+
+        /* Set file permissions to rw-r----- */
+        chmod(filePath, 0640);
+
+        curr = curr->next;
+    }
+}
+
+/* File selection submenu */
+void fileSelectionMenu() {
+    int choice;
+    char fileName[256];
+
+    while (1) {
+        printf("\nWhich file you want to process?\n");
+        printf("Enter 1 to pick the largest file\n");
+        printf("Enter 2 to pick the smallest file\n");
+        printf("Enter 3 to specify the name of a file\n\n");
+        printf("Enter a choice from 1 to 3: ");
+        scanf("%d", &choice);
+
+        if (choice == 1) {
+            findLargestFile(fileName);
+        } else if (choice == 2) {
+            findSmallestFile(fileName);
+        } else if (choice == 3) {
+            printf("Enter the complete file name: ");
+            scanf("%s", fileName);
+            /* Check if file exists */
+            if (access(fileName, F_OK) != 0) {
+                printf("The file %s was not found. Try again\n", fileName);
+                continue;
+            }
+        } else {
+            printf("You entered an incorrect choice. Try again.\n");
+            continue;
+        }
+
+        printf("Now processing the chosen file named %s\n", fileName);
+        struct movie *list = processFile(fileName);
+        writeFiles(list);
+        freeMovies(list);
+        return;
+    }
+}
+
+int main() {
+    int choice;
+
+    while (1) {
+        printf("1. Select file to process\n");
+        printf("2. Exit the program\n\n");
+        printf("Enter a choice 1 or 2: ");
+        scanf("%d", &choice);
+
+        if (choice == 1) {
+            fileSelectionMenu();
+        } else if (choice == 2) {
+            return EXIT_SUCCESS;
+        } else {
+            printf("You entered an incorrect choice. Try again.\n");
+        }
     }
 
-    struct movie *list = processFile(argv[1]);
-    if (list == NULL) {
-        return EXIT_FAILURE;
-    }
-
-    /* TODO: Add interactive menu and processing functions */
-
-    freeMovies(list);
     return EXIT_SUCCESS;
 }
